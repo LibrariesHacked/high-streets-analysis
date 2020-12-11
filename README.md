@@ -1,12 +1,10 @@
 # High street analysis
 
-Process for analysing locations of libraries alongside high streets definitions from Ordnance Survey.
+Technical documentation for analysing locations of libraries alongside high streets definition data from Ordnance Survey.
 
 ## Set up the database
 
-These steps provide the process used to create a database that will then be used for the libraries on the high streets research.
-
-(Sorry - this is not #OpenData)
+These steps were used to create a database that was then used for the libraries on the high streets research.
 
 ### Initial setup
 
@@ -16,13 +14,13 @@ Ordnance Survey data (available to the public sector via the [Public sector geos
 high_street_201903.dump.gz
 ```
 
-With a local (or remote) PostgreSQL server this can be refreshed into a new database. This provides the following tables.
+With a local PostgreSQL server this was restored into a new database.
 
 ### Extract libraries from librarydata DB
 
-This refers to a separate database, the details for which are in the Libraries Hacked [librarydata-db](https://github.com/LibrariesHacked/librarydata-db) GitHub repository.
+Firstly, data on libraries was extracted from a separate database, the details for which are in the Libraries Hacked [librarydata-db](https://github.com/LibrariesHacked/librarydata-db) GitHub repository.
 
-Save a CSV file of the results from the following query which extracts a list of libraries.
+Save a CSV file of the results from the following query which provides a list of libraries in England.
 
 ```SQL
 select
@@ -47,15 +45,16 @@ and "Country Code" = 'E92000001'
 order by "Local authority", "Library name";
 ```
 
-Also save a CSV file of the following query which extracts rural/urban classifications for all postcodes.
+CSV file extracted of the following query which produces rural/urban classifications for all postcodes.
 
 ```SQL
-select postcode, rural_urban_classification from geo_postcode_lookup;
+SELECT postcode, rural_urban_classification
+FROM geo_postcode_lookup;
 ```
 
 ### Create a new table for libraries
 
-Back on the High Streets database, create a new table to store libraries.
+Back on the High Streets database, a new table to store libraries:
 
 ```SQL
 CREATE TABLE libraries (
@@ -77,23 +76,22 @@ CREATE TABLE libraries (
 );
 ```
 
-Then import the data from the previous CSV (change the path to be whatever is the one for you).
+Then data imported from the previous CSV.
 
 ```SQL
-copy libraries from 'C:\Development\LibrariesHacked\high-streets-analysis\libraries.csv' csv header;
+COPY libraries FROM 'C:\Development\LibrariesHacked\high-streets-analysis\libraries.csv' csv header;
 ```
 
-Then add a column to store the geometry single field.
+Then a column to store the geometry field from Easting and Northing.
 
 ```SQL
 SELECT AddGeometryColumn ('public', 'libraries', 'geom', 27700, 'POINT', 2);
 UPDATE libraries l SET geom = ST_SetSRID(ST_MakePoint("Easting", "Northing"), 27700);
 ```
 
-
 ### Create a new table for classifications
 
-The rural/urban classifications can then be entered into a new table. First create the tables.
+The rural/urban classifications were then entered into a new table. First, tables created:
 
 ```SQL
 CREATE TABLE classifications (
@@ -106,13 +104,13 @@ CREATE TABLE classification_description (
 );
 ```
 
-Then import the following classifications file held in this repository.
+Then imported the classifications file from the extract in previous steps.
 
 ```SQL
-copy classifications from 'C:\Development\LibrariesHacked\high-streets-analysis\classifications.csv' csv header;
+COPY classifications FROM 'C:\Development\LibrariesHacked\high-streets-analysis\classifications.csv' csv header;
 ```
 
-Then import the classification descriptions. These aren't fully necessary but are quite useful to see.
+Then the classification descriptions. These are purely descriptive versions of the codes but are quite useful to see.
 
 ```SQL
 INSERT INTO classification_description VALUES
@@ -131,6 +129,9 @@ INSERT INTO classification_description VALUES
 
 ### Add Starbucks data
 
+A Starbucks file was downloaded from [the Starbucks CSV repository](https://github.com/chrismeller/StarbucksLocations). It is outdated (2017) but should be illustrative.
+
+Table creation script:
 
 ```SQL
 CREATE TABLE starbucks (
@@ -159,19 +160,17 @@ CREATE TABLE starbucks (
 ```
 
 ```SQL
-copy starbucks from 'C:\Development\LibrariesHacked\high-streets-analysis\starbucks.csv' csv header;
+COPY starbucks FROM 'C:\Development\LibrariesHacked\high-streets-analysis\starbucks.csv' csv header;
 ```
 
-Then add a column to store the geometry single field.
+Then a column to store the geometry single field.
 
 ```SQL
 SELECT AddGeometryColumn ('public', 'starbucks', 'geom', 27700, 'POINT', 2);
 UPDATE starbucks s SET geom = ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 27700);
 ```
 
-
-At that point we have enough data in the database to run the queries.
-
+That is all the data that was required for the analysis.
 
 ## Queries
 
@@ -180,28 +179,28 @@ At that point we have enough data in the database to run the queries.
 Which urban/rural classifications are applicable to high streets in England?
 
 ```SQL
-SELECT DISTINCT c.rural_urban_classification, d.description
+SELECT c.rural_urban_classification, d.description, count(distinct hsa.id), Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
 FROM classifications c
 JOIN classification_description d ON c.rural_urban_classification = d.code
-WHERE c.postcode in (
-	select p.postcode from high_street_201903_id2postcode_lookup p join high_street_201903_address_geom a on a.id = p.id where a.country_name = 'ENGLAND'
-)
+JOIN high_street_201903_id2postcode_lookup hsp on hsp.postcode = c.postcode
+JOIN high_street_201903_address_geom hsa on hsa.id = hsp.id and hsa.country_name = 'ENGLAND'
+GROUP BY c.rural_urban_classification, d.description
 ORDER by c.rural_urban_classification;
 ```
 
-| Code | Rural/urban description |
-| ---- | ----------------------- |
-| A1 | Urban - Major Conurbation |
-| B1 | Urban - Minor Conurbation |
-| C1 | Urban - City and Town |
-| C2 | Urban - City and Town in a sparse setting |
-| D1 | Rural - Town and Fringe |
-| D2 | Rural - Town and Fringe in a sparse setting |
-| E1 | Rural - Village |
-| E2 | Rural - Village in a sparse setting |
-| F1 | Rural - Hamlets and Isolated Dwellings |
+| Code | Rural/urban description | High streets | Percentage |
+| ---- | ----------------------- | ------------ | ---------- |
+| A1"	"Urban - Major Conurbation"	2437	47
+| B1"	"Urban - Minor Conurbation"	235	3
+| C1"	"Urban - City and Town"	2905	43
+| C2"	"Urban - City and Town in a sparse setting"	27	0
+| D1"	"Rural - Town and Fringe"	485	6
+| D2"	"Rural - Town and Fringe in a sparse setting"	74	1
+| E1"	"Rural - Village"	29	0
+| E2"	"Rural - Village in a sparse setting"	6	0
+| F1"	"Rural - Hamlets and Isolated Dwellings"	32	0
 
-All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are returned.
+All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are returned. Rural amounts of 7% of high streets, urban is 93%.
 
 
 ### High streets
@@ -209,7 +208,7 @@ All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are r
 How many high streets are there in England?
 
 ```
-select count(*) from high_street_201903_centreline_geom where country_name = 'ENGLAND'
+select count(*) from high_street_201903_centreline_geom where country_name = 'ENGLAND';
 ```
 
 | Count |
