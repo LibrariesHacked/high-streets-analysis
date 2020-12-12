@@ -24,21 +24,21 @@ Save a CSV file of the results from the following query which provides a list of
 
 ```SQL
 select
-	"Local authority",
-	"Local authority code",
-	"Library name",
-	"Address 1",
-	"Address 2",
-	"Address 3",
-	"Postcode",
-	"Library type",
-	"Unique property reference number",
-	"Co-located",
-	"Easting",
-	"Northing",
-	"OA Code",
-	"Rural urban classification",
-	"IMD"
+	"Local authority" as authority,
+	"Local authority code" as athority_code,
+	"Library name" as library_name,
+	"Address 1" as address_1,
+	"Address 2" as address_2,
+	"Address 3" as address_3,
+	"Postcode" as postcode,
+	"Library type" as library_type,
+	"Unique property reference number" as uprn,
+	"Co-located" as co_located,
+	"Easting" as easting,
+	"Northing" as northing,
+	"OA Code" as oa_code,
+	"Rural urban classification" as rural_urban_classification,
+	"IMD" as imd
 from vw_libraries_geo
 where "Year closed" is null
 and "Country Code" = 'E92000001'
@@ -58,21 +58,21 @@ Back on the High Streets database, a new table to store libraries:
 
 ```SQL
 CREATE TABLE libraries (
-  "Local authority" text,
-	"Local authority code" text,
-	"Library name" text,
-	"Address 1" text,
-	"Address 2" text,
-	"Address 3" text,
-	"Postcode" text,
-	"Library type" text,
-	"Unique property reference number" text,
-	"Co-located" text,
-	"Easting" numeric,
-	"Northing" numeric,
-	"OA Code" text,
-	"Rural urban classification" character (2),
-	"IMD" integer
+  authority text,
+	authority_code text,
+	library_name text,
+	address_1 text,
+	address_2 text,
+	address_3 text,
+	postcode text,
+	library_type text,
+	uprn text,
+	co_located text,
+	easting numeric,
+	northing numeric,
+	oa_code character (9),
+	rural_urban_classification character (2),
+	imd integer
 );
 ```
 
@@ -96,11 +96,11 @@ The rural/urban classifications were then entered into a new table. First, table
 ```SQL
 CREATE TABLE classifications (
   postcode text,
-	rural_urban_classification text
+  rural_urban_classification text
 );
 CREATE TABLE classification_description (
   code text,
-	description text
+  description text
 );
 ```
 
@@ -125,7 +125,6 @@ INSERT INTO classification_description VALUES
 ('F1', 'Rural - Hamlets and Isolated Dwellings'),
 ('F2', 'Rural - Hamlets and Isolated Dwellings in a sparse setting');
 ```
-
 
 ### Add Starbucks data
 
