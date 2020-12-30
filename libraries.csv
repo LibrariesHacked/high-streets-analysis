@@ -1,4 +1,4 @@
-"Local authority","Local authority code","Library name","Address 1","Address 2","Address 3","Postcode","Library type","Unique property reference number","Co-located","Easting","Northing","OA Code","Rural urban classification","IMD"
+"local_authority","local_authority_code","library_name","address_1","address_2","address_3","postcode","library_type","unique_property_reference_number","colocated","easting","northing","oa_code","rural_urban_classification","imd"
 "Barking and Dagenham","E09000002","Barking","2 Town Square","Barking","Essex","IG11 7NB","LAL",100053358,"No",544343,183985,"E00175105","A1",7796
 "Barking and Dagenham","E09000002","Dagenham","1 Church Elm Lane","Dagenham","Essex","RM10 9QS","LAL",10023599312,"No",549090,184574,"E00000442","A1",4861
 "Barking and Dagenham","E09000002","Marks Gate","Marks Gate Community Centre, Rose Lane","Marks Gate","Essex","RM6 5NJ","LAL",100027163,"Yes",548081,189545,"E00000138","A1",3924

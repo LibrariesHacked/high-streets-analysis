@@ -20,36 +20,36 @@ With a local PostgreSQL server this was restored into a new database.
 
 Firstly, data on libraries was extracted from a separate database, the details for which are in the Libraries Hacked [librarydata-db](https://github.com/LibrariesHacked/librarydata-db) GitHub repository.
 
-Save a CSV file of the results from the following query which provides a list of libraries in England.
+A CSV file of the results from the following query was saved to the ```libraries.csv``` in this repository.
 
 ```SQL
 select
-	"Local authority" as authority,
-	"Local authority code" as athority_code,
-	"Library name" as library_name,
-	"Address 1" as address_1,
-	"Address 2" as address_2,
-	"Address 3" as address_3,
-	"Postcode" as postcode,
-	"Library type" as library_type,
-	"Unique property reference number" as uprn,
-	"Co-located" as co_located,
-	"Easting" as easting,
-	"Northing" as northing,
-	"OA Code" as oa_code,
-	"Rural urban classification" as rural_urban_classification,
-	"IMD" as imd
+	local_authority,
+	local_authority_code,
+	library_name,
+	address_1,
+	address_2,
+	address_3,
+	postcode,
+	library_type,
+	unique_property_reference_number,
+	colocated,
+	easting,
+	northing,
+	oa_code,
+	rural_urban_classification,
+	imd
 from vw_libraries_geo
-where "Year closed" is null
-and "Country Code" = 'E92000001'
-order by "Local authority", "Library name";
+where year_closed is null
+and country_code = 'E92000001'
+order by local_authority, library_name;
 ```
 
-CSV file extracted of the following query which produces rural/urban classifications for all postcodes.
+CSV file extracted (```classifications.csv```) of the following query which produces rural/urban classifications for all postcodes.
 
 ```SQL
-SELECT postcode, rural_urban_classification
-FROM geo_postcode_lookup;
+select postcode, rural_urban_classification
+from geo_postcode_lookup;
 ```
 
 ### Create a new table for libraries
@@ -57,17 +57,17 @@ FROM geo_postcode_lookup;
 Back on the High Streets database, a new table to store libraries:
 
 ```SQL
-CREATE TABLE libraries (
-  authority text,
-	authority_code text,
+create table libraries (
+  local_authority text,
+	local_authority_code text,
 	library_name text,
 	address_1 text,
 	address_2 text,
 	address_3 text,
 	postcode text,
 	library_type text,
-	uprn text,
-	co_located text,
+	unique_property_reference_number text,
+	colocated text,
 	easting numeric,
 	northing numeric,
 	oa_code character (9),
@@ -79,14 +79,14 @@ CREATE TABLE libraries (
 Then data imported from the previous CSV.
 
 ```SQL
-COPY libraries FROM 'C:\Development\LibrariesHacked\high-streets-analysis\libraries.csv' csv header;
+copy libraries from 'C:\Development\LibrariesHacked\high-streets-analysis\libraries.csv' csv header;
 ```
 
 Then a column to store the geometry field from Easting and Northing.
 
 ```SQL
-SELECT AddGeometryColumn ('public', 'libraries', 'geom', 27700, 'POINT', 2);
-UPDATE libraries l SET geom = ST_SetSRID(ST_MakePoint("Easting", "Northing"), 27700);
+select AddGeometryColumn ('public', 'libraries', 'geom', 27700, 'POINT', 2);
+update libraries l set geom = ST_SetSRID(ST_MakePoint(easting, northing), 27700);
 ```
 
 ### Create a new table for classifications
@@ -94,11 +94,11 @@ UPDATE libraries l SET geom = ST_SetSRID(ST_MakePoint("Easting", "Northing"), 27
 The rural/urban classifications were then entered into a new table. First, tables created:
 
 ```SQL
-CREATE TABLE classifications (
+create table classifications (
   postcode text,
   rural_urban_classification text
 );
-CREATE TABLE classification_description (
+create table classifications_description (
   code text,
   description text
 );
@@ -107,13 +107,13 @@ CREATE TABLE classification_description (
 Then imported the classifications file from the extract in previous steps.
 
 ```SQL
-COPY classifications FROM 'C:\Development\LibrariesHacked\high-streets-analysis\classifications.csv' csv header;
+copy classifications from 'C:\Development\LibrariesHacked\high-streets-analysis\classifications.csv' csv header;
 ```
 
 Then the classification descriptions. These are purely descriptive versions of the codes but are quite useful to see.
 
 ```SQL
-INSERT INTO classification_description VALUES
+insert into classifications_description values
 ('A1', 'Urban - Major Conurbation'),
 ('B1', 'Urban - Minor Conurbation'),
 ('C1', 'Urban - City and Town'),
@@ -133,7 +133,7 @@ A Starbucks file was downloaded from [the Starbucks CSV repository](https://gith
 Table creation script:
 
 ```SQL
-CREATE TABLE starbucks (
+create table starbucks (
   Id text,
 	StarbucksId text,
 	Name text,
@@ -159,14 +159,14 @@ CREATE TABLE starbucks (
 ```
 
 ```SQL
-COPY starbucks FROM 'C:\Development\LibrariesHacked\high-streets-analysis\starbucks.csv' csv header;
+copy starbucks from 'C:\Development\LibrariesHacked\high-streets-analysis\starbucks.csv' csv header;
 ```
 
 Then a column to store the geometry single field.
 
 ```SQL
-SELECT AddGeometryColumn ('public', 'starbucks', 'geom', 27700, 'POINT', 2);
-UPDATE starbucks s SET geom = ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 27700);
+select AddGeometryColumn ('public', 'starbucks', 'geom', 27700, 'POINT', 2);
+update starbucks s set geom = ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 27700);
 ```
 
 That is all the data that was required for the analysis.
@@ -178,35 +178,34 @@ That is all the data that was required for the analysis.
 Which urban/rural classifications are applicable to high streets in England?
 
 ```SQL
-SELECT c.rural_urban_classification, d.description, count(distinct hsa.id), Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
-FROM classifications c
-JOIN classification_description d ON c.rural_urban_classification = d.code
-JOIN high_street_201903_id2postcode_lookup hsp on hsp.postcode = c.postcode
-JOIN high_street_201903_address_geom hsa on hsa.id = hsp.id and hsa.country_name = 'ENGLAND'
-GROUP BY c.rural_urban_classification, d.description
-ORDER by c.rural_urban_classification;
+select c.rural_urban_classification, d.description, count(distinct hsa.id), Round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
+from classifications c
+join classifications_description d on c.rural_urban_classification = d.code
+join high_street_201903_id2postcode_lookup hsp on hsp.postcode = c.postcode
+join high_street_201903_address_geom hsa on hsa.id = hsp.id and hsa.country_name = 'ENGLAND'
+group by c.rural_urban_classification, d.description
+order by c.rural_urban_classification;
 ```
 
 | Code | Rural/urban description | High streets | Percentage |
 | ---- | ----------------------- | ------------ | ---------- |
-| A1"	"Urban - Major Conurbation"	2437	47
-| B1"	"Urban - Minor Conurbation"	235	3
-| C1"	"Urban - City and Town"	2905	43
-| C2"	"Urban - City and Town in a sparse setting"	27	0
-| D1"	"Rural - Town and Fringe"	485	6
-| D2"	"Rural - Town and Fringe in a sparse setting"	74	1
-| E1"	"Rural - Village"	29	0
-| E2"	"Rural - Village in a sparse setting"	6	0
-| F1"	"Rural - Hamlets and Isolated Dwellings"	32	0
+| A1 | Urban - Major Conurbation | 2437 | 47 |
+| B1 | Urban - Minor Conurbation | 235 | 3 |
+| C1 | Urban - City and Town | 2905 | 43 |
+| C2 | Urban - City and Town in a sparse setting | 27 | 0 |
+| D1 | Rural - Town and Fringe | 485 | 6 |
+| D2 | Rural - Town and Fringe in a sparse setting | 74 | 1 |
+| E1 | Rural - Village | 29 | 0 |
+| E2 | Rural - Village in a sparse setting | 6 | 0 |
+| F1 | Rural - Hamlets and Isolated Dwellings | 32 | 0 |
 
 All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are returned. Rural amounts of 7% of high streets, urban is 93%.
-
 
 ### High streets
 
 How many high streets are there in England?
 
-```
+```SQL
 select count(*) from high_street_201903_centreline_geom where country_name = 'ENGLAND';
 ```
 
@@ -214,27 +213,35 @@ select count(*) from high_street_201903_centreline_geom where country_name = 'EN
 | ----- |
 | 6136 |
 
-
-How many high street clusters are there in England? (Clustering high streets within 100m)
+How many high street clusters are there in England? (Clustering high streets within 50m)
 
 ```SQL
-SELECT COUNT(*) FROM (SELECT UNNEST(ST_ClusterWithin(geom, 100)) FROM high_street_201903_centreline_geom WHERE country_name = 'ENGLAND')C;
+select count(*) from (select unnest(ST_ClusterWithin(geom, 50)) from high_street_201903_centreline_geom where country_name = 'ENGLAND')c;
 ```
 
 | Count |
 | ----- |
-| 3367 |
-
+| 3732 |
 
 ### Libraries
 
-How many libraries are rural or urban?
+#### How many libraries are there?
 
+```SQL
+select count(*) from libraries;
 ```
-SELECT "Rural urban classification" as classification, COUNT(*) as libraries, Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
-FROM Libraries
-GROUP BY "Rural urban classification"
-ORDER BY "Rural urban classification";
+
+| Count |
+| ----- |
+| 2953 |
+
+#### How many libraries are rural or urban?
+
+```SQL
+select rural_urban_classification as classification, count(*) as libraries, round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
+from Libraries
+group by rural_urban_classification
+order by rural_urban_classification;
 ```
 
 | Classification | Count | Percent |
@@ -250,13 +257,15 @@ ORDER BY "Rural urban classification";
 | F1 | 16 | 1 |
 | F2 | 3 | 0 |
 
-How many libraries are on the high street? (Share postcodes with buildings on the high street)
+74% are in urban areas, while 26% are in rural areas. 
 
-```
-SELECT COUNT(*)
-FROM Libraries
-WHERE "Postcode" IN 
-(SELECT postcode from high_street_201903_id2postcode_lookup);
+#### How many libraries are on the high street? (Share postcodes with buildings on the high street)
+
+```SQL
+select count(*)
+from Libraries
+where postcode in
+(select postcode from high_street_201903_id2postcode_lookup);
 ```
 
 | Count |
@@ -264,15 +273,15 @@ WHERE "Postcode" IN
 | 717 |
 
 
-How many libraries are on the high street? (Grouped by rural/urban classification)
+#### How many libraries are on the high street? (Grouped by rural/urban classification)
 
-```
-SELECT "Rural urban classification", COUNT(*)
-FROM Libraries
-WHERE "Postcode" IN 
-(SELECT postcode from high_street_201903_id2postcode_lookup)
-GROUP BY "Rural urban classification"
-ORDER BY "Rural urban classification";
+```SQL
+select rural_urban_classification, count(*)
+from libraries
+where postcode in 
+(select postcode from high_street_201903_id2postcode_lookup)
+group by rural_urban_classification
+order by rural_urban_classification;
 ```
 
 | Code | Count |
@@ -288,25 +297,25 @@ ORDER BY "Rural urban classification";
 | F1 | 2 |
 
 
-How many libraries are near the high street? (Within 400 metres)
+#### How many libraries are near the high street? (Within 400 metres)
 
-```
-SELECT COUNT(DISTINCT("Local authority", "Library name"))
-FROM libraries l
-JOIN high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 400);
+```SQL
+select count(distinct(local_authority, library_name))
+from libraries l
+join high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 400);
 ```
 
 | Count |
 | ----- |
 | 1820 |
 
-
+This is 62% of libraries.
 
 ### Starbucks
 
 How many Starbucks are rural or urban?
 
-```
+```SQL
 SELECT c.rural_urban_classification, d.description, COUNT(*) as stores, Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
 FROM starbucks s 
 JOIN classifications c on c.postcode = s.postalcode
@@ -325,4 +334,4 @@ GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_clas
 "F1"	"Rural - Hamlets and Isolated Dwellings"	86	6
 "F2"	"Rural - Hamlets and Isolated Dwellings in a sparse setting"	4	0
 
-86% of Starbucks stores are in Urban locations. That is also skewed by a large number of those If we take out motorway services and airports that becomes closer to 95%. 
+86% of Starbucks stores are in Urban locations. That is also skewed by a large number of those If we take out motorway services and airports that becomes closer to 95%.
