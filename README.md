@@ -199,7 +199,7 @@ order by c.rural_urban_classification;
 | E2 | Rural - Village in a sparse setting | 6 | 0 |
 | F1 | Rural - Hamlets and Isolated Dwellings | 32 | 0 |
 
-All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are returned. Rural amounts of 7% of high streets, urban is 93%.
+All except F2 (Rural - Hamlets and Isolated Dwellings in a sparse setting) are returned. Rural is 7% of high streets, urban is 93%.
 
 ### High streets
 
@@ -238,24 +238,25 @@ select count(*) from libraries;
 #### How many libraries are rural or urban?
 
 ```SQL
-select rural_urban_classification as classification, count(*) as libraries, round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
-from Libraries
-group by rural_urban_classification
-order by rural_urban_classification;
+select rural_urban_classification as classification, d.description, count(*) as libraries, round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
+from libraries l
+join classifications_description d on l.rural_urban_classification = d.code
+group by rural_urban_classification, d.description
+order by rural_urban_classification, d.description;
 ```
 
-| Classification | Count | Percent |
-| -------------- | ----- | ------- |
-| A1 | 884 | 30 |
-| B1 | 112 | 4 |
-| C1 | 1194 | 40 |
-| C2 | 8 | 0 |
-| D1 | 640 | 22 |
-| D2 | 46 | 2 |
-| E1 | 34 | 1 |
-| E2 | 16 | 1 |
-| F1 | 16 | 1 |
-| F2 | 3 | 0 |
+| Classification | Description | Count | Percent |
+| -------------- | ----------- | ----- | ------- |
+"A1 | Urban - Major Conurbation | 884	30
+"B1 | Urban - Minor Conurbation | 112	4
+"C1 | Urban - City and Town | 1194	40
+"C2 | Urban - City and Town in a sparse setting | 8	0
+"D1 | Rural - Town and Fringe | 640	22
+"D2 | Rural - Town and Fringe in a sparse setting | 46	2
+"E1 | Rural - Village | 34	1
+"E2 | Rural - Village in a sparse setting | 16	1
+"F1 | Rural - Hamlets and Isolated Dwellings | 16	1
+"F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 3	0
 
 74% are in urban areas, while 26% are in rural areas. 
 
@@ -276,7 +277,7 @@ where postcode in
 #### How many libraries are on the high street? (Grouped by rural/urban classification)
 
 ```SQL
-select rural_urban_classification, count(*)
+select rural_urban_classification, count(*), round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
 from libraries
 where postcode in 
 (select postcode from high_street_201903_id2postcode_lookup)
@@ -284,17 +285,17 @@ group by rural_urban_classification
 order by rural_urban_classification;
 ```
 
-| Code | Count |
-| ---- | ----- |
-| A1 | 246 |
-| B1 | 31 |
-| C1 | 301 |
-| C2 | 3 |
-| D1 | 121 |
-| D2 | 11 |
-| E1 | 1 |
-| E2 | 1 |
-| F1 | 2 |
+| Code | Count | Percent |
+| ---- | ----- | ------- |
+| A1 | 246 | 34 |
+| B1 | 31 | 4 |
+| C1 | 301 | 42 |
+| C2 | 3 | 0 |
+| D1 | 121 | 17 |
+| D2 | 11 | 2 |
+| E1 | 1 | 0 |
+| E2 | 1 | 0 |
+| F1 | 2 | 0 |
 
 
 #### How many libraries are near the high street? (Within 400 metres)
@@ -326,12 +327,12 @@ GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_clas
 
 | Classification | Description | Count | Percent |
 | -------------- | ----------- | ----- | ------- |
-"A1"	"Urban - Major Conurbation"	702	47
-"B1"	"Urban - Minor Conurbation"	34	2
-"C1"	"Urban - City and Town"	548	37
-"D1"	"Rural - Town and Fringe"	24	2
-"E1"	"Rural - Village"	102	7
-"F1"	"Rural - Hamlets and Isolated Dwellings"	86	6
-"F2"	"Rural - Hamlets and Isolated Dwellings in a sparse setting"	4	0
+| A1 | Urban - Major Conurbation | 702 | 47 |
+| B1 | Urban - Minor Conurbation | 34 | 2 |
+| C1 | Urban - City and Town | 548 | 37 |
+| D1 | Rural - Town and Fringe | 24	2 |
+| E1 | Rural - Village | 102 | 7 |
+| F1 | Rural - Hamlets and Isolated Dwellings | 86 | 6 |
+| F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 4 | 0 |
 
 86% of Starbucks stores are in Urban locations. That is also skewed by a large number of those If we take out motorway services and airports that becomes closer to 95%.
