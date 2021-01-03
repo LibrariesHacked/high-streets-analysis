@@ -247,16 +247,16 @@ order by rural_urban_classification, d.description;
 
 | Classification | Description | Count | Percent |
 | -------------- | ----------- | ----- | ------- |
-"A1 | Urban - Major Conurbation | 884	30
-"B1 | Urban - Minor Conurbation | 112	4
-"C1 | Urban - City and Town | 1194	40
-"C2 | Urban - City and Town in a sparse setting | 8	0
-"D1 | Rural - Town and Fringe | 640	22
-"D2 | Rural - Town and Fringe in a sparse setting | 46	2
-"E1 | Rural - Village | 34	1
-"E2 | Rural - Village in a sparse setting | 16	1
-"F1 | Rural - Hamlets and Isolated Dwellings | 16	1
-"F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 3	0
+"A1 | Urban - Major Conurbation | 884 | 30 |
+"B1 | Urban - Minor Conurbation | 112 | 4 |
+"C1 | Urban - City and Town | 1194 | 40 |
+"C2 | Urban - City and Town in a sparse setting | 8 | 0 |
+"D1 | Rural - Town and Fringe | 640 | 22 |
+"D2 | Rural - Town and Fringe in a sparse setting | 46 | 2 |
+"E1 | Rural - Village | 34 | 1 |
+"E2 | Rural - Village in a sparse setting | 16 | 1 |
+"F1 | Rural - Hamlets and Isolated Dwellings | 16 | 1 |
+"F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 3 | 0 |
 
 74% are in urban areas, while 26% are in rural areas. 
 
@@ -298,19 +298,19 @@ order by rural_urban_classification;
 | F1 | 2 | 0 |
 
 
-#### How many libraries are near the high street? (Within 400 metres)
+#### How many libraries are near the high street? (Within 500 metres)
 
 ```SQL
 select count(distinct(local_authority, library_name))
 from libraries l
-join high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 400);
+join high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 500);
 ```
 
 | Count |
 | ----- |
-| 1820 |
+| 1873 |
 
-This is 62% of libraries.
+This is 63% of libraries. This also means 
 
 ### Starbucks
 
@@ -336,3 +336,10 @@ GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_clas
 | F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 4 | 0 |
 
 86% of Starbucks stores are in Urban locations. That is also skewed by a large number of those If we take out motorway services and airports that becomes closer to 95%.
+
+### Waterstones
+
+There is a script in this repository which will extract Waterstones store details.
+
+
+
