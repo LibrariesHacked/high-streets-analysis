@@ -169,6 +169,28 @@ select AddGeometryColumn ('public', 'starbucks', 'geom', 27700, 'POINT', 2);
 update starbucks s set geom = ST_Transform(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), 27700);
 ```
 
+### Add Waterstones data
+
+There is a script in this repository which will extract Waterstones postcodes.
+
+```SQL
+create table waterstones (
+	postcode text,
+	easting numeric,
+	northing numeric
+);
+```
+
+```SQL
+copy waterstones from 'C:\Development\LibrariesHacked\high-streets-analysis\waterstones.csv' csv header;
+```
+
+```SQL
+select AddGeometryColumn ('public', 'waterstones', 'geom', 27700, 'POINT', 2);
+update waterstones w set geom = ST_SetSRID(ST_MakePoint(w.easting, w.northing), 27700);
+```
+
+
 That is all the data that was required for the analysis.
 
 ## Queries
@@ -216,12 +238,12 @@ select count(*) from high_street_201903_centreline_geom where country_name = 'EN
 How many high street clusters are there in England? (Clustering high streets within 50m)
 
 ```SQL
-select count(*) from (select unnest(ST_ClusterWithin(geom, 50)) from high_street_201903_centreline_geom where country_name = 'ENGLAND')c;
+select count(*) from (select unnest(ST_ClusterWithin(geom, 150)) from high_street_201903_centreline_geom where country_name = 'ENGLAND')c;
 ```
 
 | Count |
 | ----- |
-| 3732 |
+| 3191 |
 
 ### Libraries
 
@@ -247,16 +269,16 @@ order by rural_urban_classification, d.description;
 
 | Classification | Description | Count | Percent |
 | -------------- | ----------- | ----- | ------- |
-"A1 | Urban - Major Conurbation | 884 | 30 |
-"B1 | Urban - Minor Conurbation | 112 | 4 |
-"C1 | Urban - City and Town | 1194 | 40 |
-"C2 | Urban - City and Town in a sparse setting | 8 | 0 |
-"D1 | Rural - Town and Fringe | 640 | 22 |
-"D2 | Rural - Town and Fringe in a sparse setting | 46 | 2 |
-"E1 | Rural - Village | 34 | 1 |
-"E2 | Rural - Village in a sparse setting | 16 | 1 |
-"F1 | Rural - Hamlets and Isolated Dwellings | 16 | 1 |
-"F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 3 | 0 |
+| A1 | Urban - Major Conurbation | 884 | 30 |
+| B1 | Urban - Minor Conurbation | 112 | 4 |
+| C1 | Urban - City and Town | 1194 | 40 |
+| C2 | Urban - City and Town in a sparse setting | 8 | 0 |
+| D1 | Rural - Town and Fringe | 640 | 22 |
+| D2 | Rural - Town and Fringe in a sparse setting | 46 | 2 |
+| E1 | Rural - Village | 34 | 1 |
+| E2 | Rural - Village in a sparse setting | 16 | 1 |
+| F1 | Rural - Hamlets and Isolated Dwellings | 16 | 1 |
+| F2 | Rural - Hamlets and Isolated Dwellings in a sparse setting | 3 | 0 |
 
 74% are in urban areas, while 26% are in rural areas. 
 
@@ -273,6 +295,24 @@ where postcode in
 | ----- |
 | 717 |
 
+
+What about libraries on the high street by classification?
+
+```SQL
+select
+	rural_urban_classification as classification,
+	d.description,
+	count(*) as Count,
+	round(count(*) * 100.0/ SUM(count(*)) over ()) as percent
+from libraries l
+join classifications_description d on l.rural_urban_classification = d.code
+where l.postcode in
+(select postcode from high_street_201903_id2postcode_lookup)
+group by rural_urban_classification, d.description
+order by rural_urban_classification, d.description;
+```
+
+581 urban libraries are on high streets. This is (581 / 2198) 26% of urban libraries.
 
 #### How many libraries are on the high street? (Grouped by rural/urban classification)
 
@@ -310,7 +350,19 @@ join high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 500);
 | ----- |
 | 1873 |
 
-This is 63% of libraries. This also means 
+This is 63% of libraries.
+
+What about the percentage by classification?
+
+```SQL
+select d.description, count(distinct library_name)
+from libraries l
+join high_street_201903_centreline_geom h ON ST_DWithin(l.geom, h.geom, 500)
+join classifications_description d on l.rural_urban_classification = d.code
+group by description order by description;
+```
+
+1511 urban. This is (1511 / 2198) 69% of urban libraries.
 
 ### Starbucks
 
@@ -320,7 +372,7 @@ How many Starbucks are rural or urban?
 SELECT c.rural_urban_classification, d.description, COUNT(*) as stores, Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
 FROM starbucks s 
 JOIN classifications c on c.postcode = s.postalcode
-JOIN classification_description d on d.code = c.rural_urban_classification
+JOIN classifications_description d on d.code = c.rural_urban_classification
 WHERE s.countrysubdivisioncode = 'ENG'
 GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_classification;
 ```
@@ -339,7 +391,35 @@ GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_clas
 
 ### Waterstones
 
-There is a script in this repository which will extract Waterstones store details.
+How many Waterstones are rural or urban?
 
+```SQL
+SELECT c.rural_urban_classification, d.description, COUNT(*) as stores, Round(COUNT(*) * 100.0/ SUM(COUNT(*)) over ()) as percent
+FROM waterstones w 
+JOIN classifications c on replace(c.postcode, ' ', '') = replace(w.postcode, ' ', '')
+JOIN classifications_description d on d.code = c.rural_urban_classification
+GROUP BY c.rural_urban_classification, d.description ORDER BY c.rural_urban_classification;
+```
 
+98% in urban locations.
 
+How many Waterstones are on the High Street?
+
+```SQL
+select count(*)
+from waterstones
+where replace(postcode, ' ', '') in
+(select replace(postcode, ' ', '') from high_street_201903_id2postcode_lookup);
+```
+
+178 of 235 (76%)
+
+How many Waterstones are near the high street?
+
+```SQL
+select count(distinct(w.postcode))
+from waterstones w
+join high_street_201903_centreline_geom h ON ST_DWithin(w.geom, h.geom, 500);
+```
+
+223 of 235 (95%)

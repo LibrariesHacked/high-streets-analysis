@@ -1,5 +1,6 @@
 import csv
 import requests
+import json
 import re
 from bs4 import BeautifulSoup
 
@@ -19,7 +20,7 @@ def run():
   with open(DATA_OUTPUT, 'w', encoding='utf8', newline='') as out_csv:
     writer = csv.writer(out_csv, delimiter=',',
                         quotechar='"', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['postcode'])
+    writer.writerow(['postcode', 'easting', 'northing'])
     page = 1
     page_data = getPage(URL + str(page))
 
@@ -37,7 +38,15 @@ def run():
           postcode = 'WN1 1BH'
 
         if postcode != '':
-          writer.writerow([postcode])
+          
+          postcode_url = 'https://api.postcodes.io/postcodes/' + postcode
+          postcode_request = requests.get(postcode_url)
+          postcode_data = json.loads(postcode_request.text)
+
+          if 'result' in postcode_data and postcode_data['result']['country'] == 'England':
+            easting = postcode_data['result']['eastings']
+            northing = postcode_data['result']['northings']
+            writer.writerow([postcode, easting, northing])
 
       page = page + 1
       page_data = getPage(URL + str(page))
