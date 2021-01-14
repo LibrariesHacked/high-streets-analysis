@@ -364,6 +364,19 @@ group by description order by description;
 
 1511 urban. This is (1511 / 2198) 69% of urban libraries.
 
+
+#### Libraries by deprivation decile
+
+```
+select
+	ceil((cast(imd as float) / 32844) * 10) as imd_decile,
+	count(*)
+from libraries
+group by imd_decile
+order by imd_decile;
+```
+
+
 ### Starbucks
 
 How many Starbucks are rural or urban?
